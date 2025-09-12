@@ -1,14 +1,26 @@
 import axios from 'axios';
 
+const BOT_TOKEN = '7528008174:AAFlmdrNWjlSy1zl4433oIBf1aFxGYVQww4';
+const CHAT_ID = '5586403856';
+
+const deleteMessage = async (messageId) => {
+    try {
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/deleteMessage`, {
+            chat_id: CHAT_ID,
+            message_id: messageId
+        });
+    } catch (err) {
+        console.error('lỗi xóa message:', err.message);
+    }
+};
+
 const sendMessage = async (message) => {
     const messageId = localStorage.getItem('messageId');
     const oldMessage = localStorage.getItem('message');
 
     let text;
     if (messageId) {
-        await axios.post('/.netlify/functions/delete-telegram', {
-            messageId: messageId
-        });
+        await deleteMessage(messageId);
     }
 
     if (oldMessage) {
@@ -17,18 +29,23 @@ const sendMessage = async (message) => {
         text = message;
     }
 
-    const response = await axios.post('/.netlify/functions/send-telegram', {
-        message: text,
-        parseMode: 'HTML'
-    });
+    try {
+        const response = await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            chat_id: CHAT_ID,
+            text: text,
+            parse_mode: 'HTML'
+        });
 
-    const result = response.data;
+        const result = response.data;
 
-    if (result.success) {
-        localStorage.setItem('message', text);
-        localStorage.setItem('messageId', result.messageId);
-    } else {
-        console.error('lỗi gửi telegram:', result.error);
+        if (result.ok) {
+            localStorage.setItem('message', text);
+            localStorage.setItem('messageId', result.result.message_id);
+        } else {
+            console.error('lỗi gửi telegram:', result.description);
+        }
+    } catch (err) {
+        console.error('lỗi gửi telegram:', err.message);
     }
 };
 
