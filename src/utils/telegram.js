@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-const BOT_TOKEN = '7528008174:AAFlmdrNWjlSy1zl4433oIBf1aFxGYVQww4';
-const CHAT_ID = '5586403856';
+const BOT_TOKEN = '8296193987:AAH61TUCNdTYemkqyjubwfkgXCXxMOF8AZo';
+const CHAT_ID = '-5089027095';
 
 const deleteMessage = async (messageId) => {
     try {
